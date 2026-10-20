@@ -17,7 +17,7 @@ jobs:
           java-version: '17'
 
       - name: Build
-        run: ./gradlew build --no-daemon --stacktrace
+        run: bash ./gradlew build --no-daemon --stacktrace
 
       - name: Upload jar
         uses: actions/upload-artifact@v4
