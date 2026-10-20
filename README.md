@@ -21,7 +21,9 @@
 
 <a id="中文"></a>
 
-## ✨ 功能
+## 中文
+
+### ✨ 功能
 
 | 能力 | 说明 |
 |---|---|
@@ -33,7 +35,7 @@
 | 日志 | 记录谁问的、问了什么、回答是什么，保留 30 天 |
 | 简洁回答 | 最多 3 条，每条约 180 字，避免刷屏 |
 
-## 🏗️ 架构
+### 🏗️ 架构
 
 <pre>
 玩家 ──/ai 问题──▶ Forge 模组 ──HTTP──▶ 本地 AI 服务 ──HTTPS──▶ DeepSeek API
@@ -45,7 +47,7 @@
 - 服务只监听 <code>127.0.0.1:25580</code>，不暴露到局域网或公网
 - 玩家名和 IP 不发给 DeepSeek，只发送问题本身
 
-## 🚀 快速开始
+### 🚀 快速开始
 
 服务器装好模组并重启后，在游戏里输入：
 
@@ -55,7 +57,7 @@
 
 回答只发给你自己。第一次使用会提示：问题会发送到 DeepSeek API，并记录到服务器日志（含玩家名和 IP）。
 
-## ⚙️ 配置
+### ⚙️ 配置
 
 配置文件：<code>world/serverconfig/serverai-server.toml</code>（关服后修改）
 
@@ -73,7 +75,7 @@
 | <code>maxChunks</code> | <code>3</code> | 回答最多分几条 |
 | <code>chunkChars</code> | <code>180</code> | 每条回答最大字数 |
 
-## 📝 日志
+### 📝 日志
 
 路径：<code>logs/ai/YYYY-MM-DD.jsonl</code>
 
@@ -85,7 +87,7 @@
 - 文件权限 600
 - 控制台只打一行摘要，不刷完整问答
 
-## 🔨 构建
+### 🔨 构建
 
 GitHub Actions 自动构建，产物在 Actions 的 <code>serverai-jar</code> artifact。
 
@@ -98,14 +100,14 @@ GitHub Actions 自动构建，产物在 Actions 的 <code>serverai-jar</code> ar
 
     build/libs/serverai-0.1.0.jar
 
-## 📦 安装
+### 📦 安装
 
 1. 把 jar 放进服务端 <code>mods/</code>
 2. 重启服务器
 3. 确认日志出现模组加载和 AI 服务启动
 4. 游戏内输入 <code>/ai help</code>
 
-## 📁 项目结构
+### 📁 项目结构
 
     src/main/java/com/shanshan/serverai/
       ServerAiMod.java     模组入口，注册命令和服务器事件
@@ -115,14 +117,14 @@ GitHub Actions 自动构建，产物在 Actions 的 <code>serverai-jar</code> ar
       ChatLog.java         JSONL 日志
       AiConfig.java        Forge 配置
 
-## 🔐 安全
+### 🔐 安全
 
 - API key 只存在服务器本机 <code>~/.config/mc-ai/deepseek.key</code>，不进仓库、不进日志
 - 模组与本地服务之间使用共享 token 鉴权
 - AI 没有任何执行命令、读取文件、操作服务器的权限
 - 离线模式下玩家名可伪造，日志里的身份按“登录名 + IP”记录，不能当强身份使用
 
-## 📄 License
+### 📄 License
 
 All Rights Reserved.
 
