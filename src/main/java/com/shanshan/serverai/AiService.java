@@ -99,43 +99,48 @@ public final class AiService {
             player.sendSystemMessage(Component.literal("§c[AI] 问题太长了，最多 " + maxQuestion + " 个字符"));
             return;
         }
+        boolean op = player.hasPermissions(2);
         if (!ServiceProcess.isReady()) {
             ServiceProcess.ensureStartedAsync();
             player.sendSystemMessage(Component.literal("§7[AI] 服务正在启动，请几秒后再试"));
             return;
         }
 
-        long now = System.currentTimeMillis();
-        int cooldown = AiConfig.COOLDOWN_SECONDS.get();
-        int perMinute = AiConfig.MAX_PER_MINUTE.get();
-        PlayerState state = PLAYERS.computeIfAbsent(player.getUUID(), k -> new PlayerState());
-        synchronized (state) {
-            long waitMs = state.lastMs + cooldown * 1000L - now;
-            if (waitMs > 0) {
-                player.sendSystemMessage(Component.literal("§c[AI] 慢一点，还要等 " + ((waitMs + 999) / 1000) + " 秒"));
-                return;
+        if (!op) {
+            long now = System.currentTimeMillis();
+            int cooldown = AiConfig.COOLDOWN_SECONDS.get();
+            int perMinute = AiConfig.MAX_PER_MINUTE.get();
+            PlayerState state = PLAYERS.computeIfAbsent(player.getUUID(), k -> new PlayerState());
+            synchronized (state) {
+                long waitMs = state.lastMs + cooldown * 1000L - now;
+                if (waitMs > 0) {
+                    player.sendSystemMessage(Component.literal("§c[AI] 慢一点，还要等 " + ((waitMs + 999) / 1000) + " 秒"));
+                    return;
+                }
+                if (now - state.minuteStart >= 60_000L) {
+                    state.minuteStart = now;
+                    state.minuteCount = 0;
+                }
+                if (state.minuteCount >= perMinute) {
+                    player.sendSystemMessage(Component.literal("§c[AI] 每分钟最多问 " + perMinute + " 次"));
+                    return;
+                }
+                state.lastMs = now;
+                state.minuteCount++;
             }
-            if (now - state.minuteStart >= 60_000L) {
-                state.minuteStart = now;
-                state.minuteCount = 0;
-            }
-            if (state.minuteCount >= perMinute) {
-                player.sendSystemMessage(Component.literal("§c[AI] 每分钟最多问 " + perMinute + " 次"));
-                return;
-            }
-            state.lastMs = now;
-            state.minuteCount++;
-        }
 
-        if (!consumeDaily()) {
-            player.sendSystemMessage(Component.literal("§c[AI] 今天的次数用完了，请联系服主"));
-            return;
+            if (!consumeDaily()) {
+                player.sendSystemMessage(Component.literal("§c[AI] 今天的次数用完了，请联系服主"));
+                return;
+            }
         }
 
         if (!player.getPersistentData().getBoolean("serverai_notice")) {
             player.getPersistentData().putBoolean("serverai_notice", true);
-            player.sendSystemMessage(Component.literal(
-                    "§7[AI] 你的问题会发送到 DeepSeek API，并在服务器日志中记录（含玩家名和 IP）。回答仅供参考。"));
+            String notice = op
+                    ? "§7[AI] 你是 OP：无调用次数上限，可读取服务器目录内文件（密钥/密码会自动打码）。问题会发送到 DeepSeek 并记录日志。"
+                    : "§7[AI] 你的问题会发送到 DeepSeek API，并在服务器日志中记录（含玩家名和 IP）。回答仅供参考。";
+            player.sendSystemMessage(Component.literal(notice));
         }
 
         String auth = readAuth();
@@ -152,18 +157,20 @@ public final class AiService {
         JsonObject payload = new JsonObject();
         payload.addProperty("id", requestId);
         payload.addProperty("question", question);
+        payload.addProperty("op", op);
+        payload.addProperty("unlimited", op);
         String body = payload.toString();
 
         player.sendSystemMessage(Component.literal("§7[AI] 正在思考…"));
         try {
-            executor.execute(() -> request(player, name, uuid, ip, requestId, question, body, auth));
+            executor.execute(() -> request(player, name, uuid, ip, requestId, question, body, auth, op));
         } catch (RejectedExecutionException e) {
             player.sendSystemMessage(Component.literal("§c[AI] 当前排队已满，请稍后再试"));
         }
     }
 
     private static void request(ServerPlayer player, String name, UUID uuid, String ip,
-                                String requestId, String question, String body, String auth) {
+                                String requestId, String question, String body, String auth, boolean op) {
         long started = System.currentTimeMillis();
         try {
             HttpRequest request = HttpRequest.newBuilder(URI.create(AiConfig.SERVICE_URL.get()))
@@ -177,7 +184,7 @@ public final class AiService {
 
             if (response.statusCode() != 200) {
                 String error = parseError(response.body());
-                ChatLog.log(name, uuid, ip, requestId, question, "", "error", latency, error, null);
+                ChatLog.log(name, uuid, ip, op, requestId, question, "", "error", latency, error, null);
                 send(player, "§c[AI] " + friendly(response.statusCode(), error));
                 return;
             }
@@ -186,20 +193,20 @@ public final class AiService {
             String answer = json.has("answer") ? json.get("answer").getAsString().trim() : "";
             JsonElement usage = json.get("usage");
             if (answer.isEmpty()) {
-                ChatLog.log(name, uuid, ip, requestId, question, "", "empty", latency, "empty answer", usage);
+                ChatLog.log(name, uuid, ip, op, requestId, question, "", "empty", latency, "empty answer", usage);
                 send(player, "§c[AI] 没有拿到回答，请稍后再试");
                 return;
             }
-            ChatLog.log(name, uuid, ip, requestId, question, answer, "ok", latency, null, usage);
+            ChatLog.log(name, uuid, ip, op, requestId, question, answer, "ok", latency, null, usage);
             deliver(player, answer);
         } catch (HttpTimeoutException e) {
             long latency = System.currentTimeMillis() - started;
-            ChatLog.log(name, uuid, ip, requestId, question, "", "timeout", latency, "timeout", null);
+            ChatLog.log(name, uuid, ip, op, requestId, question, "", "timeout", latency, "timeout", null);
             send(player, "§c[AI] 超时了，请稍后再试");
         } catch (Exception e) {
             long latency = System.currentTimeMillis() - started;
             LOGGER.warn("[AI] request failed", e);
-            ChatLog.log(name, uuid, ip, requestId, question, "", "error", latency, e.getMessage(), null);
+            ChatLog.log(name, uuid, ip, op, requestId, question, "", "error", latency, e.getMessage(), null);
             send(player, "§c[AI] 服务暂时不可用，请稍后再试");
         }
     }
