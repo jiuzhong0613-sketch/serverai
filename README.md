@@ -6,6 +6,8 @@
 
 玩家在游戏里用 <code>/ai &lt;问题&gt;</code> 提问，回答只发给自己。AI 服务由服务器托管，玩家不需要自己的 API key，也不用额外安装模组。
 
+[中文](#中文) · [English](#english)
+
 [![Build](https://img.shields.io/badge/build-GitHub%20Actions-2088FF?style=flat-square&logo=github-actions&logoColor=white)](https://github.com/jiuzhong0613-sketch/serverai/actions)
 ![Minecraft](https://img.shields.io/badge/Minecraft-1.20.1-3C8527?style=flat-square)
 ![Forge](https://img.shields.io/badge/Forge-47.4.0-F16436?style=flat-square)
@@ -16,6 +18,8 @@
 </div>
 
 ---
+
+<a id="中文"></a>
 
 ## ✨ 功能
 
@@ -121,3 +125,119 @@ GitHub Actions 自动构建，产物在 Actions 的 <code>serverai-jar</code> ar
 ## 📄 License
 
 All Rights Reserved.
+
+---
+
+<a id="english"></a>
+
+## English
+
+**Minecraft 1.20.1 Forge server-side AI assistant**
+
+Players ask with <code>/ai &lt;question&gt;</code> in chat, and only the asker sees the answer. The server hosts the AI service, so players do not need their own API key or an extra client mod.
+
+### ✨ Features
+
+| Feature | Description |
+|---|---|
+| <code>/ai &lt;question&gt;</code> | Ask in game; only the asker sees the answer |
+| Server-hosted | Players do not need their own API key |
+| No extra client mod | Server-only mod; the existing 9 client mods stay unchanged |
+| Automatic lifecycle | Starts the AI service with the server and stops it on shutdown |
+| Rate limits | 15 s cooldown, 3 requests per minute, 1000 requests per day |
+| Logging | Records who asked, the question and the answer; kept for 30 days |
+| Concise answers | Up to 3 chat lines, about 180 characters each |
+
+### 🏗️ Architecture
+
+<pre>
+Player ──/ai question──▶ Forge mod ──HTTP──▶ local AI service ──HTTPS──▶ DeepSeek API
+                         │
+                         └──▶ logs/ai/YYYY-MM-DD.jsonl
+</pre>
+
+- The mod only talks to the local AI service; the DeepSeek API key never enters the Minecraft process
+- The service listens on <code>127.0.0.1:25580</code> only
+- Player names and IPs are never sent to DeepSeek; only the question is sent
+
+### 🚀 Quick start
+
+After the mod is installed and the server is restarted:
+
+    /ai How do I start with Tinkers' Construct?
+    /ai How do I join this server?
+    /ai help
+
+The answer is private. On first use the player is told that the question is sent to the DeepSeek API and logged with player name and IP.
+
+### ⚙️ Configuration
+
+File: <code>world/serverconfig/serverai-server.toml</code> (edit while the server is stopped)
+
+| Option | Default | Description |
+|---|---:|---|
+| <code>serviceUrl</code> | <code>http://127.0.0.1:25580/chat</code> | Local AI service endpoint |
+| <code>manageService</code> | <code>true</code> | Start and stop the AI service with the server |
+| <code>serviceDir</code> | <code>~/mc_ai_service</code> | AI service directory |
+| <code>authFile</code> | <code>~/.config/mc-ai/auth.txt</code> | Local service auth file; keep private |
+| <code>timeoutSeconds</code> | <code>185</code> | Request timeout; must exceed the 180 s service timeout |
+| <code>cooldownSeconds</code> | <code>15</code> | Per-player cooldown |
+| <code>maxPerMinute</code> | <code>3</code> | Per-player requests per minute |
+| <code>maxQuestionChars</code> | <code>250</code> | Maximum question length |
+| <code>dailyLimit</code> | <code>1000</code> | Daily request limit |
+| <code>maxChunks</code> | <code>3</code> | Maximum number of chat lines per answer |
+| <code>chunkChars</code> | <code>180</code> | Maximum characters per chat line |
+
+### 📝 Logging
+
+Path: <code>logs/ai/YYYY-MM-DD.jsonl</code>
+
+One JSON object per line with:
+
+<code>ts</code>, <code>requestId</code>, <code>player</code>, <code>uuid</code>, <code>ip</code>, <code>question</code>, <code>answer</code>, <code>status</code>, <code>latencyMs</code>, <code>usage</code>
+
+- Kept for 30 days
+- File mode 600
+- The console only gets a one-line summary
+
+### 🔨 Build
+
+GitHub Actions builds the jar automatically; download the <code>serverai-jar</code> artifact from the Actions run.
+
+Local build requires Java 17:
+
+    export JAVA_HOME="$HOME/java/jdk-17/Contents/Home"
+    ./gradlew build --no-daemon
+
+Output:
+
+    build/libs/serverai-0.1.0.jar
+
+### 📦 Install
+
+1. Put the jar into the server <code>mods/</code> directory
+2. Restart the server
+3. Check the log for mod loading and AI service startup
+4. Run <code>/ai help</code> in game
+
+### 📁 Project structure
+
+    src/main/java/com/shanshan/serverai/
+      ServerAiMod.java     mod entry, commands and server events
+      AiCommand.java       /ai command
+      AiService.java       async requests, rate limits, answer splitting
+      ServiceProcess.java  start/stop the local AI service with the server
+      ChatLog.java         JSONL logging
+      AiConfig.java        Forge config
+
+### 🔐 Security
+
+- The API key lives only on the server at <code>~/.config/mc-ai/deepseek.key</code>; it is never committed or logged
+- The mod and the local service share a token for authentication
+- The AI has no permission to run commands, read files or operate the server
+- In offline mode player names can be spoofed; log identities are “login name + IP”, not strong authentication
+
+### 📄 License
+
+All Rights Reserved.
+
