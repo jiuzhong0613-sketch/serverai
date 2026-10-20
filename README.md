@@ -29,17 +29,20 @@
 |---|---|
 | <code>/ai &lt;问题&gt;</code> | 游戏内提问，回答仅提问者可见 |
 | 服务端托管 | 玩家不需要自己的 API key |
+| 联网搜索 | 通过 DeepSeek Search/Fetch 查询实时信息 |
+| OP 特权 | OP 无调用次数上限，可读服务器目录内文件（密钥自动打码） |
 | 零额外安装 | 纯服务端模组，现有 9 个客户端 mod 不变 |
 | 自动生命周期 | 服务器启动时拉起 AI 服务，关服时关闭 |
-| 限流 | 15 秒冷却、每分钟 3 次、每日 1000 次 |
+| 限流 | 15 秒冷却、每分钟 3 次、每日 1000 次（仅非 OP） |
 | 日志 | 记录谁问的、问了什么、回答是什么，保留 30 天 |
 | 简洁回答 | 最多 3 条，每条约 180 字，避免刷屏 |
 
 ### 🏗️ 架构
 
 <pre>
-玩家 ──/ai 问题──▶ Forge 模组 ──HTTP──▶ 本地 AI 服务 ──HTTPS──▶ DeepSeek API
-                         │
+玩家 ──/ai 问题──▶ Forge 模组 ──HTTP──▶ 本地 AI 服务 ──HTTPS──▶ DeepSeek Chat
+                         │                    ├──▶ DeepSeek Search / Fetch
+                         │                    └──▶ 服务器目录（仅 OP）
                          └──▶ logs/ai/YYYY-MM-DD.jsonl
 </pre>
 
@@ -71,7 +74,7 @@
 | <code>cooldownSeconds</code> | <code>15</code> | 每人冷却时间 |
 | <code>maxPerMinute</code> | <code>3</code> | 每人每分钟上限 |
 | <code>maxQuestionChars</code> | <code>250</code> | 问题长度上限 |
-| <code>dailyLimit</code> | <code>1000</code> | 每日请求上限 |
+| <code>dailyLimit</code> | <code>1000</code> | 每日请求上限（仅非 OP） |
 | <code>maxChunks</code> | <code>3</code> | 回答最多分几条 |
 | <code>chunkChars</code> | <code>180</code> | 每条回答最大字数 |
 
@@ -81,7 +84,7 @@
 
 每行一个 JSON，字段：
 
-<code>ts</code>、<code>requestId</code>、<code>player</code>、<code>uuid</code>、<code>ip</code>、<code>question</code>、<code>answer</code>、<code>status</code>、<code>latencyMs</code>、<code>usage</code>
+<code>ts</code>、<code>requestId</code>、<code>player</code>、<code>uuid</code>、<code>ip</code>、<code>op</code>、<code>question</code>、<code>answer</code>、<code>status</code>、<code>latencyMs</code>、<code>usage</code>
 
 - 保留 30 天
 - 文件权限 600
@@ -121,7 +124,9 @@ GitHub Actions 自动构建，产物在 Actions 的 <code>serverai-jar</code> ar
 
 - API key 只存在服务器本机 <code>~/.config/mc-ai/deepseek.key</code>，不进仓库、不进日志
 - 模组与本地服务之间使用共享 token 鉴权
-- AI 没有任何执行命令、读取文件、操作服务器的权限
+- AI 不能执行命令或修改服务器；OP 的文件读取限定在服务器目录内，路径逃逸会被拒绝
+- 文件中的密码、token、密钥在返回前自动打码
+- 非 OP 不能读取服务器文件，只能使用版本、模组清单和网络搜索
 - 离线模式下玩家名可伪造，日志里的身份按“登录名 + IP”记录，不能当强身份使用
 
 ### 📄 License
@@ -144,17 +149,20 @@ Players ask with <code>/ai &lt;question&gt;</code> in chat, and only the asker s
 |---|---|
 | <code>/ai &lt;question&gt;</code> | Ask in game; only the asker sees the answer |
 | Server-hosted | Players do not need their own API key |
+| Web search | Uses DeepSeek Search/Fetch for live information |
+| OP privileges | OPs have no call limit and can read files under the server root (secrets redacted) |
 | No extra client mod | Server-only mod; the existing 9 client mods stay unchanged |
 | Automatic lifecycle | Starts the AI service with the server and stops it on shutdown |
-| Rate limits | 15 s cooldown, 3 requests per minute, 1000 requests per day |
+| Rate limits | 15 s cooldown, 3 requests per minute, 1000 per day (non-OP only) |
 | Logging | Records who asked, the question and the answer; kept for 30 days |
 | Concise answers | Up to 3 chat lines, about 180 characters each |
 
 ### 🏗️ Architecture
 
 <pre>
-Player ──/ai question──▶ Forge mod ──HTTP──▶ local AI service ──HTTPS──▶ DeepSeek API
-                         │
+Player ──/ai question──▶ Forge mod ──HTTP──▶ local AI service ──HTTPS──▶ DeepSeek Chat
+                         │                    ├──▶ DeepSeek Search / Fetch
+                         │                    └──▶ server root (OP only)
                          └──▶ logs/ai/YYYY-MM-DD.jsonl
 </pre>
 
@@ -186,7 +194,7 @@ File: <code>world/serverconfig/serverai-server.toml</code> (edit while the serve
 | <code>cooldownSeconds</code> | <code>15</code> | Per-player cooldown |
 | <code>maxPerMinute</code> | <code>3</code> | Per-player requests per minute |
 | <code>maxQuestionChars</code> | <code>250</code> | Maximum question length |
-| <code>dailyLimit</code> | <code>1000</code> | Daily request limit |
+| <code>dailyLimit</code> | <code>1000</code> | Daily request limit (non-OP only) |
 | <code>maxChunks</code> | <code>3</code> | Maximum number of chat lines per answer |
 | <code>chunkChars</code> | <code>180</code> | Maximum characters per chat line |
 
@@ -196,7 +204,7 @@ Path: <code>logs/ai/YYYY-MM-DD.jsonl</code>
 
 One JSON object per line with:
 
-<code>ts</code>, <code>requestId</code>, <code>player</code>, <code>uuid</code>, <code>ip</code>, <code>question</code>, <code>answer</code>, <code>status</code>, <code>latencyMs</code>, <code>usage</code>
+<code>ts</code>, <code>requestId</code>, <code>player</code>, <code>uuid</code>, <code>ip</code>, <code>op</code>, <code>question</code>, <code>answer</code>, <code>status</code>, <code>latencyMs</code>, <code>usage</code>
 
 - Kept for 30 days
 - File mode 600
@@ -236,7 +244,9 @@ Output:
 
 - The API key lives only on the server at <code>~/.config/mc-ai/deepseek.key</code>; it is never committed or logged
 - The mod and the local service share a token for authentication
-- The AI has no permission to run commands, read files or operate the server
+- The AI cannot run commands or modify the server; OP file reads are confined to the server root and path escapes are rejected
+- Passwords, tokens and API keys are redacted before file content is returned
+- Non-OP players cannot read server files; they only get the version, mod list and web search
 - In offline mode player names can be spoofed; log identities are “login name + IP”, not strong authentication
 
 ### 📄 License
