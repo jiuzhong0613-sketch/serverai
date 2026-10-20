@@ -62,7 +62,7 @@ public final class ChatLog {
         }
     }
 
-    public static synchronized void log(String player, UUID uuid, String ip, String requestId,
+    public static synchronized void log(String player, UUID uuid, String ip, boolean op, String requestId,
                                         String question, String answer, String status,
                                         long latencyMs, String error, JsonElement usage) {
         if (dir == null) {
@@ -74,6 +74,7 @@ public final class ChatLog {
         entry.addProperty("player", player);
         entry.addProperty("uuid", uuid.toString());
         entry.addProperty("ip", ip);
+        entry.addProperty("op", op);
         entry.addProperty("question", question);
         entry.addProperty("answer", answer);
         entry.addProperty("status", status);
