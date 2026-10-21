@@ -1,0 +1,21 @@
+{
+  "host": "127.0.0.1",
+  "port": 25580,
+  "baseUrl": "https://api.deepseek.com",
+  "model": "deepseek-flash",
+  "reasoningEffort": "medium",
+  "maxTokens": 2048,
+  "temperature": 0.5,
+  "timeoutMs": 180000,
+  "toolTimeoutMs": 30000,
+  "maxConcurrent": 3,
+  "queueLimit": 10,
+  "dailyLimit": 1000,
+  "serverRoot": "/path/to/mc_server_1201",
+  "maxToolSteps": 4,
+  "maxFileBytes": 65536,
+  "maxFetchChars": 8000,
+  "searchCount": 5,
+  "apiKeyFile": "~/.config/mc-ai/deepseek.key",
+  "tokenFile": "~/.config/mc-ai/auth.txt"
+}
