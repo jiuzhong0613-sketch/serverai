@@ -9,6 +9,7 @@ public final class AiConfig {
     public static final ForgeConfigSpec.BooleanValue MANAGE_SERVICE;
     public static final ForgeConfigSpec.ConfigValue<String> SERVICE_DIR;
     public static final ForgeConfigSpec.ConfigValue<String> AUTH_FILE;
+    public static final ForgeConfigSpec.ConfigValue<String> NODE_PATH;
     public static final ForgeConfigSpec.IntValue TIMEOUT_SECONDS;
     public static final ForgeConfigSpec.IntValue COOLDOWN_SECONDS;
     public static final ForgeConfigSpec.IntValue MAX_PER_MINUTE;
@@ -26,6 +27,8 @@ public final class AiConfig {
                 .define("manageService", true);
         SERVICE_DIR = B.define("serviceDir", System.getProperty("user.home") + "/mc_ai_service");
         AUTH_FILE = B.define("authFile", System.getProperty("user.home") + "/.config/mc-ai/auth.txt");
+        NODE_PATH = B.comment("Node executable. Leave empty to search PATH and common locations.")
+                .define("nodePath", "");
         TIMEOUT_SECONDS = B.comment("HTTP timeout in seconds. Must exceed the bridge timeout (180s).")
                 .defineInRange("timeoutSeconds", 185, 10, 300);
         B.pop();
