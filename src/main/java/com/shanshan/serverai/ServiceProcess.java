@@ -3,10 +3,12 @@ package com.shanshan.serverai;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
 
+import java.io.File;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -37,22 +39,33 @@ public final class ServiceProcess {
         if (process != null && process.isAlive()) {
             return;
         }
+
         try {
             Path dir = Path.of(AiConfig.SERVICE_DIR.get());
-            Path script = dir.resolve("start-ai.sh");
-            if (!Files.isRegularFile(script)) {
-                LOGGER.warn("[AI] service script not found: {}", script);
+            Path entry = dir.resolve("server.js");
+            if (!Files.isRegularFile(entry)) {
+                LOGGER.warn("[AI] service entry not found: {}", entry);
                 ready = false;
                 return;
             }
-            ProcessBuilder builder = new ProcessBuilder("/bin/bash", script.toString());
+
+            String auth = readAuth();
+            if (auth.isEmpty()) {
+                LOGGER.warn("[AI] service auth file is empty: {}", AiConfig.AUTH_FILE.get());
+                ready = false;
+                return;
+            }
+
+            String node = resolveNode();
+            ProcessBuilder builder = new ProcessBuilder(node, "server.js");
             builder.directory(dir.toFile());
+            builder.environment().put("MC_AI_" + "AUTH", auth);
             builder.redirectErrorStream(true);
             builder.redirectOutput(ProcessBuilder.Redirect.appendTo(dir.resolve("service.log").toFile()));
             process = builder.start();
             owned = true;
             ready = false;
-            LOGGER.info("[AI] starting local service: {}", script);
+            LOGGER.info("[AI] starting local service: {} {}", node, entry);
 
             Thread watcher = new Thread(ServiceProcess::awaitReady, "serverai-service-watch");
             watcher.setDaemon(true);
@@ -110,6 +123,47 @@ public final class ServiceProcess {
         }
         process = null;
         owned = false;
+    }
+
+    private static String readAuth() {
+        try {
+            return Files.readString(Path.of(AiConfig.AUTH_FILE.get()), StandardCharsets.UTF_8).trim();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static String resolveNode() {
+        String configured = AiConfig.NODE_PATH.get().trim();
+        if (!configured.isEmpty()) {
+            return configured;
+        }
+
+        boolean windows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        String exe = windows ? "node.exe" : "node";
+
+        String path = System.getenv("PATH");
+        if (path != null) {
+            for (String part : path.split(File.pathSeparator)) {
+                if (part.isBlank()) {
+                    continue;
+                }
+                Path candidate = Path.of(part, exe);
+                if (Files.isRegularFile(candidate)) {
+                    return candidate.toString();
+                }
+            }
+        }
+
+        String[] common = windows
+                ? new String[]{"C:\\Program Files\\nodejs\\node.exe", "C:\\Program Files (x86)\\nodejs\\node.exe"}
+                : new String[]{"/usr/local/bin/node", "/opt/homebrew/bin/node", "/usr/bin/node"};
+        for (String candidate : common) {
+            if (Files.isRegularFile(Path.of(candidate))) {
+                return candidate;
+            }
+        }
+        return exe;
     }
 
     private static boolean healthy() {
