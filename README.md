@@ -50,7 +50,19 @@
 - 服务只监听 <code>127.0.0.1:25580</code>，不暴露到局域网或公网
 - 玩家名和 IP 不发给 DeepSeek，只发送问题本身
 
-### 🚀 快速开始
+### 🖥️ 平台支持
+
+| 平台 | 状态 | 启动方式 |
+|---|---|---|
+| macOS | ✅ 已验证 | mod 直接调用 node，或 start-ai.sh |
+| Linux | ✅ 支持 | start-ai.sh，或 mod 直接调用 node |
+| Windows | ✅ 支持 | start-ai.bat，或 mod 直接调用 node.exe |
+
+- [Windows 安装说明](docs/WINDOWS.md)
+- [Linux 安装说明](docs/LINUX.md)
+- 服务端源码在 `service/`，含跨平台启动脚本和配置模板
+
+## 🚀 快速开始
 
 服务器装好模组并重启后，在游戏里输入：
 
@@ -169,6 +181,18 @@ Player ──/ai question──▶ Forge mod ──HTTP──▶ local AI servic
 - The mod only talks to the local AI service; the DeepSeek API key never enters the Minecraft process
 - The service listens on <code>127.0.0.1:25580</code> only
 - Player names and IPs are never sent to DeepSeek; only the question is sent
+
+### 🖥️ Platforms
+
+| Platform | Status | Startup |
+|---|---|---|
+| macOS | ✅ Verified | mod starts node directly, or start-ai.sh |
+| Linux | ✅ Supported | start-ai.sh, or the mod starts node directly |
+| Windows | ✅ Supported | start-ai.bat, or the mod starts node.exe directly |
+
+- [Windows guide](docs/WINDOWS.md)
+- [Linux guide](docs/LINUX.md)
+- Service source lives in `service/` with cross-platform scripts and a config template
 
 ### 🚀 Quick start
 
