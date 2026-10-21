@@ -7,4 +7,7 @@ logs/
 *.part
 service.pid
 build.pid
+service/config.json
+service/logs/
+service/state.json
 .DS_Store
